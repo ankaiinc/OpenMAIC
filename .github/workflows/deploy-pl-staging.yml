@@ -1,0 +1,54 @@
+name: deploy-pl-staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Full candidate SHA to deploy
+        required: true
+        type: string
+
+concurrency:
+  group: deploy-pl-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: pl-staging
+      url: https://pl-classroom-staging.fly.dev
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.expected_sha }}
+      - name: Verify exact candidate
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          set -euo pipefail
+          test "$EXPECTED_SHA" = "$GITHUB_SHA"
+          test "$EXPECTED_SHA" = "$(git rev-parse HEAD)"
+          test "${#EXPECTED_SHA}" -eq 40
+      - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1
+        with:
+          version: 0.4.71
+      - name: Deploy isolated classroom service
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          flyctl deploy . \
+            --config fly.staging.toml \
+            --remote-only \
+            --env RELEASE_SHA="$GITHUB_SHA" \
+            --wait-timeout 900
+      - name: Verify health and exact release
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          set -euo pipefail
+          test "$(curl -fsS https://pl-classroom-staging.fly.dev/api/health | jq -r '.success')" = "true"
+          test "$(curl -fsS https://pl-classroom-staging.fly.dev/api/release | jq -r '.releaseSha')" = "$EXPECTED_SHA"
