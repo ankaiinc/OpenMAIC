@@ -95,7 +95,7 @@ RUN if [ -n "$ALPINE_MIRROR" ]; then \
       cp /etc/apk/repositories /tmp/apk.repositories; \
       sed -i "s|dl-cdn.alpinelinux.org|$ALPINE_MIRROR|g" /etc/apk/repositories; \
     fi && \
-    apk add --no-cache libc6-compat cairo pango jpeg giflib librsvg && \
+    apk add --no-cache libc6-compat cairo pango jpeg giflib librsvg su-exec && \
     if [ -n "$ALPINE_MIRROR" ]; then \
       mv /tmp/apk.repositories /etc/apk/repositories; \
     fi
@@ -106,9 +106,11 @@ RUN addgroup --system --gid 1001 nodejs && \
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --chown=root:root scripts/docker-entrypoint.sh /usr/local/bin/openmaic-entrypoint
 
-USER nextjs
+RUN chmod 0755 /usr/local/bin/openmaic-entrypoint && mkdir -p /app/data
 
 EXPOSE 3000
 
+ENTRYPOINT ["/usr/local/bin/openmaic-entrypoint"]
 CMD ["node", "server.js"]

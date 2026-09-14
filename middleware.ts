@@ -1,6 +1,80 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { isAgentRuntimeConfigured, isProWorkbenchEnabled } from '@/lib/config/feature-flags';
+import { isAuthorizedPlServiceRequest } from '@/lib/server/pl-service-auth';
+const PL_CLASSROOM_COOKIE = 'pl_classroom_session';
+
+async function readPlClassroomSession(request: NextRequest): Promise<{ classroomId: string } | null> {
+  const signingSecret = process.env.OPENMAIC_HANDOFF_SECRET?.trim();
+  const token = request.cookies.get(PL_CLASSROOM_COOKIE)?.value;
+  if (!signingSecret || !token) return null;
+  const separator = token.lastIndexOf('.');
+  if (separator < 1) return null;
+  const payload = token.slice(0, separator);
+  const signature = token.slice(separator + 1);
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(signingSecret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const expectedBytes = new Uint8Array(await crypto.subtle.sign(
+    'HMAC',
+    key,
+    new TextEncoder().encode(payload),
+  ));
+  const expected = btoa(String.fromCharCode(...expectedBytes))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+  if (signature.length !== expected.length) return null;
+  let mismatch = 0;
+  for (let index = 0; index < signature.length; index += 1) {
+    mismatch |= signature.charCodeAt(index) ^ expected.charCodeAt(index);
+  }
+  if (mismatch !== 0) return null;
+  try {
+    const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    const bytes = Uint8Array.from(decoded, (character) => character.charCodeAt(0));
+    const parsed = JSON.parse(new TextDecoder().decode(bytes)) as {
+      v?: unknown;
+      classroomId?: unknown;
+      expiresAt?: unknown;
+    };
+    if (
+      parsed.v !== 1
+      || typeof parsed.classroomId !== 'string'
+      || typeof parsed.expiresAt !== 'number'
+      || parsed.expiresAt <= Date.now()
+    ) return null;
+    return { classroomId: parsed.classroomId };
+  } catch {
+    return null;
+  }
+}
+
+function isPlClassroomRuntimePath(pathname: string): boolean {
+  return pathname.startsWith('/classroom/')
+    || pathname === '/api/classroom'
+    || pathname.startsWith('/api/classroom-media/')
+    || pathname.startsWith('/api/stage-meta/')
+    || pathname.startsWith('/api/persistence/')
+    || pathname === '/api/chat'
+    || pathname === '/api/chat/pi'
+    || pathname.startsWith('/api/chat/pi/')
+    || pathname === '/api/proxy-media'
+    || pathname === '/api/generate/tts'
+    || pathname === '/api/transcription'
+    || pathname.startsWith('/api/transcription/')
+    || pathname === '/api/pl/session';
+}
+
+function isPlServerRuntimePath(pathname: string): boolean {
+  return pathname === '/api/generate-classroom'
+    || pathname.startsWith('/api/generate-classroom/')
+    || pathname === '/api/classroom';
+}
 
 /** Convert string to Uint8Array */
 function encode(str: string): Uint8Array {
@@ -46,6 +120,29 @@ async function verifyToken(token: string, accessCode: string): Promise<boolean> 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  if (isPlServerRuntimePath(pathname) && await isAuthorizedPlServiceRequest(request.headers)) {
+    return NextResponse.next();
+  }
+
+  const plSession = await readPlClassroomSession(request);
+  if (plSession) {
+    const classroomPage = pathname.match(/^\/classroom\/([^/]+)$/);
+    if (classroomPage && decodeURIComponent(classroomPage[1]!) !== plSession.classroomId) {
+      return new NextResponse('Not found', { status: 404 });
+    }
+    if (pathname === '/api/classroom') {
+      const requested = request.nextUrl.searchParams.get('id');
+      if (requested && requested !== plSession.classroomId) {
+        return NextResponse.json({ error: 'not_found' }, { status: 404 });
+      }
+    }
+    const media = pathname.match(/^\/api\/classroom-media\/([^/]+)\//);
+    if (media && decodeURIComponent(media[1]!) !== plSession.classroomId) {
+      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    }
+    if (isPlClassroomRuntimePath(pathname)) return NextResponse.next();
+  }
+
   // Return an actual server-side 404 when either half of the workbench is off.
   // Edge middleware cannot reliably inspect server-only deployment variables,
   // so it enforces the public gate and leaves the complete runtime/database
@@ -63,7 +160,12 @@ export async function middleware(request: NextRequest) {
   }
 
   // Whitelist: access-code endpoints, health check
-  if (pathname.startsWith('/api/access-code/') || pathname === '/api/health') {
+  if (
+    pathname.startsWith('/api/access-code/')
+    || pathname === '/api/health'
+    || pathname === '/api/release'
+    || pathname === '/api/pl/handoff'
+  ) {
     return NextResponse.next();
   }
 

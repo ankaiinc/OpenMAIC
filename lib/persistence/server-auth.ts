@@ -18,6 +18,7 @@ import type { AssetPrincipal } from '@openmaic/storage';
 import type { RuntimeHttpPrincipal } from '@openmaic/storage/server';
 
 import { createLogger } from '@/lib/logger';
+import { readPlClassroomSession } from '@/lib/server/pl-classroom-session';
 
 const log = createLogger('PersistenceAuth');
 
@@ -97,6 +98,8 @@ function authenticatePersistenceCredentials(
 }
 
 export function authenticatePersistenceHeaders(headers: Headers): PersistencePrincipal | undefined {
+  const plSession = readPlClassroomSession(headers);
+  if (plSession) return { key: SHARED_ASSET_PRINCIPAL, learnerKey: plSession.learnerKey };
   return authenticatePersistenceCredentials(
     headers.get('authorization') ?? undefined,
     headers.get('x-learner-key') ?? undefined,
@@ -106,6 +109,13 @@ export function authenticatePersistenceHeaders(headers: Headers): PersistencePri
 export async function authenticatePersistenceRequest(
   req: IncomingMessage,
 ): Promise<PersistencePrincipal | undefined> {
+  const headers = new Headers();
+  for (const [name, value] of Object.entries(req.headers)) {
+    const single = singleHeader(value);
+    if (single) headers.set(name, single);
+  }
+  const plSession = readPlClassroomSession(headers);
+  if (plSession) return { key: SHARED_ASSET_PRINCIPAL, learnerKey: plSession.learnerKey };
   return authenticatePersistenceCredentials(
     singleHeader(req.headers.authorization),
     singleHeader(req.headers['x-learner-key']),
