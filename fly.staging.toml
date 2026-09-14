@@ -1,0 +1,44 @@
+app = "pl-classroom-staging"
+primary_region = "sin"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  HOSTNAME = "0.0.0.0"
+  PORT = "3000"
+  NODE_ENV = "production"
+  OPENMAIC_CLASSROOMS_DIR = "/app/data/classrooms"
+  PL_APP_BASE_URL = "https://staging.pragmaticleaders.io"
+  NEXT_PUBLIC_PL_APP_BASE_URL = "https://staging.pragmaticleaders.io"
+  DEFAULT_MODEL = "openai:gpt-5.5"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 20
+    hard_limit = 30
+
+  [[http_service.checks]]
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "45s"
+    method = "GET"
+    path = "/api/health"
+
+[[vm]]
+  memory = "1gb"
+  cpu_kind = "shared"
+  cpus = 1
+
+[[mounts]]
+  source = "openmaic_data"
+  destination = "/app/data"
+  initial_size = "10gb"

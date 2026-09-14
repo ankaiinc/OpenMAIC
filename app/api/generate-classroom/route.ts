@@ -6,12 +6,14 @@ import { runClassroomGenerationJob } from '@/lib/server/classroom-job-runner';
 import { createClassroomGenerationJob } from '@/lib/server/classroom-job-store';
 import { buildRequestOrigin } from '@/lib/server/classroom-storage';
 import { createLogger } from '@/lib/logger';
+import { isAuthorizedPlServiceRequest, plServiceUnauthorized } from '@/lib/server/pl-service-auth';
 
 const log = createLogger('GenerateClassroom API');
 
 export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
+  if (!(await isAuthorizedPlServiceRequest(req.headers))) return plServiceUnauthorized();
   let requirementSnippet: string | undefined;
   try {
     const rawBody = (await req.json()) as Partial<GenerateClassroomInput>;

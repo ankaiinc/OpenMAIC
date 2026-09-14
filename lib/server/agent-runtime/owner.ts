@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { readPlClassroomSession } from '@/lib/server/pl-classroom-session';
 
 const ANONYMOUS_COOKIE = 'anonymous_id';
 const ANONYMOUS_COOKIE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
@@ -55,6 +56,9 @@ export function resolveRequestOwnerId(
   authenticatedOwnerId?: string,
 ): string {
   if (authenticatedOwnerId) return authenticatedOwnerId;
+
+  const plSession = readPlClassroomSession(req.headers);
+  if (plSession) return plSession.learnerKey;
 
   const existingId = readCookie(req.headers, ANONYMOUS_COOKIE);
   if (existingId && UUID_V4.test(existingId)) return `anon:${existingId}`;

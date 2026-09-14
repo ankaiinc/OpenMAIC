@@ -6,12 +6,14 @@ import {
 } from '@/lib/server/classroom-job-store';
 import { buildRequestOrigin } from '@/lib/server/classroom-storage';
 import { createLogger } from '@/lib/logger';
+import { isAuthorizedPlServiceRequest, plServiceUnauthorized } from '@/lib/server/pl-service-auth';
 
 const log = createLogger('ClassroomJob API');
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest, context: { params: Promise<{ jobId: string }> }) {
+  if (!(await isAuthorizedPlServiceRequest(req.headers))) return plServiceUnauthorized();
   let resolvedJobId: string | undefined;
   try {
     const { jobId } = await context.params;

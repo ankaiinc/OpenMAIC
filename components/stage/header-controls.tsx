@@ -28,6 +28,7 @@ import { CircularProgress } from '@/components/ui/circular-progress';
 import { VideoExportDialog } from './video-export-dialog';
 import { LanguageSwitcher } from '../language-switcher';
 import { SettingsDialog } from '../settings';
+import { PlReturnLink } from '../pl-return-link';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -138,6 +139,7 @@ export function HeaderControls({
   // anchors identically too.
   return (
     <div className="flex items-center gap-4">
+      <PlReturnLink />
       <div
         className={cn(
           'shrink-0 flex items-center gap-1 backdrop-blur-md shadow-sm rounded-full',
