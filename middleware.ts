@@ -67,6 +67,7 @@ function isPlClassroomRuntimePath(pathname: string): boolean {
     || pathname === '/api/generate/tts'
     || pathname === '/api/transcription'
     || pathname.startsWith('/api/transcription/')
+    || pathname === '/api/server-providers'
     || pathname === '/api/pl/session';
 }
 
