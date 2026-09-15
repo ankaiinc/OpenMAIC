@@ -68,14 +68,14 @@ describe('embedded persistence development authentication — production gate', 
     ).resolves.toBeUndefined();
   });
 
-  it('serves in production when the insecure-opt-in is explicitly set', async () => {
+  it('continues refusing the development authenticator even when the legacy opt-in is set', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     vi.stubEnv('PERSISTENCE_ALLOW_INSECURE_DEV_AUTH', 'true');
     await expect(
       authenticatePersistenceRequest(
         request({ authorization: 'Bearer shared-secret', 'x-learner-key': 'anon:learner-1' }),
       ),
-    ).resolves.toEqual({ key: 'shared', learnerKey: 'anon:learner-1' });
+    ).resolves.toBeUndefined();
   });
 
   it('keeps unchanged behaviour outside production regardless of the opt-in flag', async () => {

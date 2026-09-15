@@ -390,6 +390,15 @@ session verification that derives the learner partition from server-controlled
 identity, and change the document/merge/admin authorization policies as
 appropriate.
 
+For a production classroom deployment, `NEXT_PUBLIC_PERSISTENCE=1` also
+requires a durable `DATABASE_URL` and `OPENMAIC_HANDOFF_SECRET`. The signed PL
+classroom session is the production identity boundary; the development
+bearer-token authenticator is disabled whenever `NODE_ENV=production`, even if
+the legacy `PERSISTENCE_ALLOW_INSECURE_DEV_AUTH` flag is present. Configure a
+valid `ASSET_S3_BUCKET` for object-backed asset bytes and explicit
+`ASSET_COLLECTION_GRACE_MS` and `ASSET_COLLECTION_INTERVAL_MS` values. Back up
+PostgreSQL and enable object-store versioning before promoting a release.
+
 `PERSISTENCE_POSTGRES_PASSWORD` initializes the PostgreSQL role only when the
 data directory is empty; changing it later does not rotate an existing
 `openmaic-postgres` volume. For a disposable local database, run

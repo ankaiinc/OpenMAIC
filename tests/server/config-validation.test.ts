@@ -56,6 +56,11 @@ function clearConfigEnv() {
   delete process.env.DEFAULT_MODEL;
   delete process.env.OPENMAIC_AGENT_RUNTIME_ENABLED;
   delete process.env.DATABASE_URL;
+  delete process.env.NEXT_PUBLIC_PERSISTENCE;
+  delete process.env.OPENMAIC_HANDOFF_SECRET;
+  delete process.env.ASSET_S3_BUCKET;
+  delete process.env.ASSET_COLLECTION_GRACE_MS;
+  delete process.env.ASSET_COLLECTION_INTERVAL_MS;
   for (const prefix of LLM_ENV_PREFIXES) {
     delete process.env[`${prefix}_API_KEY`];
     delete process.env[`${prefix}_BASE_URL`];
@@ -266,6 +271,33 @@ describe('validateServerConfig — warning matrix', () => {
       const { validateServerConfig } = await import('@/lib/server/config-validation');
       validateServerConfig();
       expect(warnSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('persistence release configuration', () => {
+    it('warns when browser persistence has no durable database or handoff secret', async () => {
+      vi.stubEnv('NEXT_PUBLIC_PERSISTENCE', '1');
+      const { validateServerConfig } = await import('@/lib/server/config-validation');
+      validateServerConfig();
+      expect(warnSpy).toHaveBeenCalledTimes(3);
+      expect(warnSpy.mock.calls.map(([message]) => String(message)).join('\n')).toContain('DATABASE_URL');
+      expect(warnSpy.mock.calls.map(([message]) => String(message)).join('\n')).toContain('OPENMAIC_HANDOFF_SECRET');
+      expect(warnSpy.mock.calls.map(([message]) => String(message)).join('\n')).toContain('ASSET_S3_BUCKET');
+    });
+
+    it('warns on invalid asset storage and retention settings', async () => {
+      vi.stubEnv('NEXT_PUBLIC_PERSISTENCE', '1');
+      vi.stubEnv('DATABASE_URL', 'postgres://classroom');
+      vi.stubEnv('OPENMAIC_HANDOFF_SECRET', 'handoff-secret');
+      vi.stubEnv('ASSET_S3_BUCKET', 'INVALID_BUCKET');
+      vi.stubEnv('ASSET_COLLECTION_GRACE_MS', '-1');
+      vi.stubEnv('ASSET_COLLECTION_INTERVAL_MS', '10');
+      const { validateServerConfig } = await import('@/lib/server/config-validation');
+      validateServerConfig();
+      const messages = warnSpy.mock.calls.map(([message]) => String(message)).join('\n');
+      expect(messages).toContain('ASSET_S3_BUCKET');
+      expect(messages).toContain('ASSET_COLLECTION_GRACE_MS');
+      expect(messages).toContain('ASSET_COLLECTION_INTERVAL_MS');
     });
   });
 });

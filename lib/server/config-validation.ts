@@ -31,6 +31,7 @@ import {
   resolveApiKey,
 } from '@/lib/server/provider-config';
 import type { ProviderId } from '@/lib/types/provider';
+import { configuredS3Bucket } from '@/lib/persistence/asset-byte-store';
 
 /** Consistent prefix for boot-time config warnings. */
 const WARN_PREFIX = '[config]';
@@ -167,6 +168,37 @@ function validateAgentRuntime(): void {
 }
 
 /**
+ * Persistence is a release contract, rather than an optional request-time
+ * feature, once the browser is built to use it. Keep this warn-first so the
+ * existing staging pilot can still boot and report its exact missing input.
+ */
+function validatePersistence(): void {
+  if (process.env.NEXT_PUBLIC_PERSISTENCE !== '1') return;
+  if (!process.env.DATABASE_URL?.trim()) {
+    warn('NEXT_PUBLIC_PERSISTENCE=1 requires DATABASE_URL; durable classroom storage is unavailable.');
+  }
+  if (!process.env.OPENMAIC_HANDOFF_SECRET?.trim()) {
+    warn('NEXT_PUBLIC_PERSISTENCE=1 requires OPENMAIC_HANDOFF_SECRET; PL classroom sessions cannot be verified.');
+  }
+  if (!process.env.ASSET_S3_BUCKET?.trim()) {
+    warn('NEXT_PUBLIC_PERSISTENCE=1 requires ASSET_S3_BUCKET; generated classroom assets would not use durable object storage.');
+  }
+  try {
+    configuredS3Bucket(process.env.ASSET_S3_BUCKET);
+  } catch (error) {
+    warn(error instanceof Error ? error.message : String(error));
+  }
+  const grace = process.env.ASSET_COLLECTION_GRACE_MS?.trim();
+  if (grace !== undefined && (!/^\d+$/.test(grace) || Number(grace) < 0)) {
+    warn('ASSET_COLLECTION_GRACE_MS must be a non-negative integer in milliseconds.');
+  }
+  const interval = process.env.ASSET_COLLECTION_INTERVAL_MS?.trim();
+  if (interval !== undefined && (!/^\d+$/.test(interval) || Number(interval) < 1000)) {
+    warn('ASSET_COLLECTION_INTERVAL_MS must be an integer of at least 1000 milliseconds.');
+  }
+}
+
+/**
  * Validate server model-routing config at boot. Warn-only, cheap, and
  * non-throwing: a broken config never prevents the server from starting.
  */
@@ -176,6 +208,7 @@ export function validateServerConfig(): void {
     validateDefaultModel();
     validateModelsEnvPins();
     validateAgentRuntime();
+    validatePersistence();
   } catch (err) {
     // Boot-time validation must never take the server down.
     const detail = err instanceof Error ? err.message : String(err);
