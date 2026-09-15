@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pl-classroom-production
-      url: https://classroom.pragmaticleaders.io
+      url: https://pl-classroom-prod.fly.dev
     steps:
       - uses: actions/checkout@v4
         with:
@@ -52,8 +52,8 @@ jobs:
         run: |
           set -euo pipefail
           for attempt in {1..12}; do
-            health=$(curl -fsS --connect-timeout 10 --max-time 30 https://classroom.pragmaticleaders.io/api/health 2>/dev/null || true)
-            release=$(curl -fsS --connect-timeout 10 --max-time 30 https://classroom.pragmaticleaders.io/api/release 2>/dev/null || true)
+            health=$(curl -fsS --connect-timeout 10 --max-time 30 https://pl-classroom-prod.fly.dev/api/health 2>/dev/null || true)
+            release=$(curl -fsS --connect-timeout 10 --max-time 30 https://pl-classroom-prod.fly.dev/api/release 2>/dev/null || true)
             if [ "$(jq -r '.success // false' <<<"$health")" = "true" ] \
               && [ "$(jq -r '.releaseSha // empty' <<<"$release")" = "$EXPECTED_SHA" ]; then
               echo "Classroom production is healthy at the exact candidate"
