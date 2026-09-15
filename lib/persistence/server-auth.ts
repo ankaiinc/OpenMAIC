@@ -42,11 +42,6 @@ export const SHARED_ASSET_PRINCIPAL = 'shared';
  * startup warning and the runtime gate read the same opt-in through this one
  * helper so the two copies of the parsing cannot drift.
  */
-function insecureDevAuthOptInEnabled(): boolean {
-  const optIn = process.env.PERSISTENCE_ALLOW_INSECURE_DEV_AUTH;
-  return optIn === 'true' || optIn === '1';
-}
-
 /**
  * The development authenticator must never serve production traffic unless the
  * operator explicitly accepts the trade-off. This module provides no user
@@ -55,15 +50,15 @@ function insecureDevAuthOptInEnabled(): boolean {
  * the documented opt-in for trusted-network single-user deployments.
  */
 function devAuthenticatorAllowedInCurrentEnvironment(): boolean {
-  if (process.env.NODE_ENV !== 'production') return true;
-  return insecureDevAuthOptInEnabled();
+  // The bearer token is compiled into the public bundle. An explicit opt-in
+  // must never turn this impersonatable path on for a production process.
+  return process.env.NODE_ENV !== 'production';
 }
 
-if (process.env.NODE_ENV === 'production' && insecureDevAuthOptInEnabled()) {
+if (process.env.NODE_ENV === 'production' && process.env.PERSISTENCE_ALLOW_INSECURE_DEV_AUTH) {
   log.warn(
-    'Persistence is running the development authenticator in production: it provides no user ' +
-      'isolation, so this endpoint must only be reachable on a trusted network. Replace it with ' +
-      'real session verification before serving public traffic.',
+    'Ignoring PERSISTENCE_ALLOW_INSECURE_DEV_AUTH in production: the development persistence ' +
+      'authenticator is permanently disabled; use the signed PL classroom session.',
   );
 }
 

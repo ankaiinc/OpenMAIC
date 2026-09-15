@@ -6,7 +6,7 @@ import { AnimatePresence, Reorder, motion, useReducedMotion } from 'motion/react
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { useBrand, useIsDesktop } from '@/lib/brand/brand-context';
+import { useIsDesktop } from '@/lib/brand/brand-context';
 import { useStageStore } from '@/lib/store';
 import { useSettingsStore } from '@/lib/store/settings';
 import { useI18n } from '@/lib/hooks/use-i18n';
@@ -51,7 +51,6 @@ const RAIL_MAX_PX = 360;
 export function SlideNavRail() {
   const { t } = useI18n();
   const router = useRouter();
-  const brand = useBrand();
   const isDesktop = useIsDesktop();
   const inWorkbenchPanel = useInWorkbenchPanel();
   const scenes = useStageStore.use.scenes();
@@ -319,7 +318,7 @@ export function SlideNavRail() {
       // for instant, cursor-locked tracking; React's render value would
       // arrive too late.
       className={cn(
-        'relative flex h-full shrink-0 flex-col overflow-hidden',
+        'pl-classroom-edit-sidebar relative flex h-full shrink-0 flex-col overflow-hidden',
         'border-r border-gray-100 dark:border-gray-800',
         'bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl',
         'shadow-[2px_0_24px_rgba(0,0,0,0.02)]',
@@ -390,7 +389,7 @@ export function SlideNavRail() {
         </button>
       )}
 
-      {/* Header band — mirrors playback `SceneSidebar`: OpenMAIC logo on
+      {/* Header band — mirrors playback `SceneSidebar`: PL Classroom mark on
           the left (click → home). Height (h-10 + mt-3 + mb-1 = ~56px)
           matches playback so the chrome top edge stays at the same screen
           pixel across the mode swap. Inside the workbench panel the band
@@ -408,7 +407,12 @@ export function SlideNavRail() {
             >
               {/* Desktop client: the Electron title bar already shows the brand icon + name, so the edit rail doesn't repeat it;
                   returning home is handled by the edit bar's CommandBar back arrow. */}
-              <img src={brand.logoSrc} alt={brand.productName} className="h-6 w-auto" />
+              <span className="pl-classroom-wordmark" data-testid="pl-classroom-wordmark">
+                <span className="pl-classroom-wordmark-mark" aria-hidden="true">
+                  PL
+                </span>
+                <span>Classroom</span>
+              </span>
             </button>
           )}
         </div>

@@ -299,7 +299,7 @@ function Frame({
 
   return (
     <StageGrid
-      className="bg-gradient-to-b from-zinc-100 to-zinc-200 dark:from-zinc-950 dark:to-zinc-900"
+      className="pl-classroom-edit-shell bg-gradient-to-b from-zinc-100 to-zinc-200 dark:from-zinc-950 dark:to-zinc-900"
       topSlot={
         hideCommandBar ? null : (
           // `data-maic-edit-chrome`: the workbench's hand-edit signal scope

@@ -75,6 +75,12 @@ export function Stage({
     proWorkbenchFlag ? 'pending' : 'off',
   );
   useEffect(() => {
+    document.body.dataset.plClassroom = 'true';
+    return () => {
+      delete document.body.dataset.plClassroom;
+    };
+  }, []);
+  useEffect(() => {
     if (!proWorkbenchFlag) return;
     let cancelled = false;
     fetch('/api/agent/runtime')
@@ -380,7 +386,7 @@ export function Stage({
   );
 
   return (
-    <div className="relative flex flex-1 overflow-hidden">
+    <div data-pl-classroom-stage className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
       {/* The edit-mode guard has been removed (#1961 decision change 2026-08-23): a
           new agent version directly replaces the canvas; the user's typed data is
           protected by the write-path veto/retry channel (see lib/store/stage.ts),

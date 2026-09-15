@@ -248,6 +248,8 @@ function SkillDetailDialog({
   onClose: () => void;
 }) {
   const { t } = useI18n();
+  const isPlClassroom =
+    typeof document !== 'undefined' && document.body.dataset.plClassroom === 'true';
   const content = useUserSkillContent(skill && skill.source === 'user' ? skill.id : null);
 
   return (
@@ -313,7 +315,9 @@ function SkillDetailDialog({
                 data-testid="skill-settings-detail-note"
                 className="rounded-md border border-border bg-muted/50 px-2.5 py-2 text-xs text-muted-foreground"
               >
-                {t('settings.skills.builtinDetailNote')}
+                {isPlClassroom
+                  ? 'Built-in PL Classroom skill. Download it to use this teaching workflow elsewhere.'
+                  : t('settings.skills.builtinDetailNote')}
               </p>
             )}
 
