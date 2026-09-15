@@ -4,6 +4,14 @@ import { nanoid } from 'nanoid';
 import type { NextRequest } from 'next/server';
 import type { Scene, Stage } from '@/lib/types/stage';
 import { createLogger } from '@/lib/logger';
+import { getServerPersistenceProvider } from '@/lib/persistence/server-provider';
+import {
+  ensureClassroomPayloadSchema,
+  readClassroomPayload,
+  releaseClassroomPayload,
+  reserveClassroomPayload,
+  writeClassroomPayload,
+} from '@/lib/persistence/classroom-pg';
 
 const log = createLogger('ClassroomStorage');
 
@@ -26,6 +34,16 @@ export const CLASSROOM_ID_LENGTH = 10;
  * with a 10-character id, but the create contract must be total.
  */
 export const CLASSROOM_ID_MAX_ATTEMPTS = 3;
+
+function isPostgresClassroomsEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_PERSISTENCE === '1' && Boolean(process.env.DATABASE_URL?.trim());
+}
+
+async function classroomPool() {
+  const provider = await getServerPersistenceProvider(process.env.DATABASE_URL!.trim());
+  await ensureClassroomPayloadSchema(provider.pool);
+  return provider.pool;
+}
 
 /**
  * Generate a classroom id. Uses the same shape as the generation pipeline
@@ -169,6 +187,7 @@ export function resolveClassroomFilePath(id: string): string {
 }
 
 export async function readClassroom(id: string): Promise<PersistedClassroomData | null> {
+  if (isPostgresClassroomsEnabled()) return readClassroomPayload(await classroomPool(), id);
   const filePath = resolveClassroomFilePath(id);
   try {
     const content = await fs.readFile(filePath, 'utf-8');
@@ -201,6 +220,10 @@ export async function reserveClassroom(id: string, stage: Stage): Promise<void> 
     createdAt: new Date().toISOString(),
     reserved: true,
   };
+  if (isPostgresClassroomsEnabled()) {
+    await reserveClassroomPayload(await classroomPool(), placeholder);
+    return;
+  }
   await writeJsonFileExclusive(resolveClassroomFilePath(id), placeholder);
 }
 
@@ -213,6 +236,10 @@ export async function reserveClassroom(id: string, stage: Stage): Promise<void> 
  * failure that triggered the cleanup.
  */
 export async function releaseClassroomReservation(id: string): Promise<void> {
+  if (isPostgresClassroomsEnabled()) {
+    await releaseClassroomPayload(await classroomPool(), id);
+    return;
+  }
   const filePath = resolveClassroomFilePath(id);
   try {
     const content = await fs.readFile(filePath, 'utf-8');
@@ -253,6 +280,16 @@ export async function persistClassroom(
     scenes: data.scenes,
     createdAt: new Date().toISOString(),
   };
+
+  if (isPostgresClassroomsEnabled()) {
+    const pool = await classroomPool();
+    if (options.exclusive) {
+      await reserveClassroomPayload(pool, classroomData);
+    } else {
+      await writeClassroomPayload(pool, classroomData);
+    }
+    return { ...classroomData, url: `${baseUrl}/classroom/${data.id}` };
+  }
 
   const filePath = resolveClassroomFilePath(data.id);
   await ensureClassroomsDir();

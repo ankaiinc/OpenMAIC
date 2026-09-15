@@ -11,6 +11,8 @@ import {
   ensureClassroomJobsDir,
   writeJsonFileAtomic,
 } from '@/lib/server/classroom-storage';
+import { getServerPersistenceProvider } from '@/lib/persistence/server-provider';
+import { ensureClassroomPayloadSchema } from '@/lib/persistence/classroom-pg';
 
 export type ClassroomGenerationJobStatus = 'queued' | 'running' | 'succeeded' | 'failed';
 
@@ -76,6 +78,24 @@ async function withJobLock<T>(jobId: string, fn: () => Promise<T>): Promise<T> {
 /** Max age (ms) before a "running" job without an active runner is considered stale. */
 const STALE_JOB_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
+function isPostgresJobsEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_PERSISTENCE === '1' && Boolean(process.env.DATABASE_URL?.trim());
+}
+
+async function jobPool() {
+  const provider = await getServerPersistenceProvider(process.env.DATABASE_URL!.trim());
+  await ensureClassroomPayloadSchema(provider.pool);
+  await provider.pool.query(`
+    CREATE TABLE IF NOT EXISTS openmaic_classroom_jobs (
+      id TEXT PRIMARY KEY,
+      payload JSONB NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  return provider.pool;
+}
+
 function markStaleIfNeeded(job: ClassroomGenerationJob): ClassroomGenerationJob {
   if (job.status !== 'running') return job;
   const updatedAt = new Date(job.updatedAt).getTime();
@@ -114,6 +134,13 @@ export async function createClassroomGenerationJob(
     scenesGenerated: 0,
   };
 
+  if (isPostgresJobsEnabled()) {
+    await (await jobPool()).query(
+      'INSERT INTO openmaic_classroom_jobs (id, payload) VALUES ($1, $2::jsonb)',
+      [job.id, JSON.stringify(job)],
+    );
+    return job;
+  }
   await ensureClassroomJobsDir();
   await writeJsonFileAtomic(jobFilePath(jobId), job);
   return job;
@@ -122,6 +149,13 @@ export async function createClassroomGenerationJob(
 export async function readClassroomGenerationJob(
   jobId: string,
 ): Promise<ClassroomGenerationJob | null> {
+  if (isPostgresJobsEnabled()) {
+    const result = await (await jobPool()).query<{ payload: ClassroomGenerationJob }>(
+      'SELECT payload FROM openmaic_classroom_jobs WHERE id = $1', [jobId],
+    );
+    const job = result.rows[0]?.payload;
+    return job ? markStaleIfNeeded(job) : null;
+  }
   try {
     const content = await fs.readFile(jobFilePath(jobId), 'utf-8');
     const job = JSON.parse(content) as ClassroomGenerationJob;
@@ -150,7 +184,14 @@ export async function updateClassroomGenerationJob(
       updatedAt: new Date().toISOString(),
     };
 
-    await writeJsonFileAtomic(jobFilePath(jobId), updated);
+    if (isPostgresJobsEnabled()) {
+      await (await jobPool()).query(
+        'UPDATE openmaic_classroom_jobs SET payload = $2::jsonb, updated_at = NOW() WHERE id = $1',
+        [jobId, JSON.stringify(updated)],
+      );
+    } else {
+      await writeJsonFileAtomic(jobFilePath(jobId), updated);
+    }
     return updated;
   });
 }
