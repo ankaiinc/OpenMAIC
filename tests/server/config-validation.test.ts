@@ -280,9 +280,8 @@ describe('validateServerConfig — warning matrix', () => {
       const { validateServerConfig } = await import('@/lib/server/config-validation');
       validateServerConfig();
       expect(warnSpy).toHaveBeenCalledTimes(3);
-      const messages = warnSpy.mock.calls.flat().map(String).join('\n');
-      expect(messages).toContain('DATABASE_URL');
-      expect(messages).toContain('OPENMAIC_HANDOFF_SECRET');
+      expect(warnSpy.mock.calls.map(([message]) => String(message)).join('\n')).toContain('DATABASE_URL');
+      expect(warnSpy.mock.calls.map(([message]) => String(message)).join('\n')).toContain('OPENMAIC_HANDOFF_SECRET');
       expect(warnSpy.mock.calls.map(([message]) => String(message)).join('\n')).toContain('ASSET_S3_BUCKET');
     });
 
@@ -295,7 +294,7 @@ describe('validateServerConfig — warning matrix', () => {
       vi.stubEnv('ASSET_COLLECTION_INTERVAL_MS', '10');
       const { validateServerConfig } = await import('@/lib/server/config-validation');
       validateServerConfig();
-      const messages = warnSpy.mock.calls.flat().map(String).join('\n');
+      const messages = warnSpy.mock.calls.map(([message]) => String(message)).join('\n');
       expect(messages).toContain('ASSET_S3_BUCKET');
       expect(messages).toContain('ASSET_COLLECTION_GRACE_MS');
       expect(messages).toContain('ASSET_COLLECTION_INTERVAL_MS');
