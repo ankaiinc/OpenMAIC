@@ -9,11 +9,10 @@ export function PlReturnLink() {
   useEffect(() => {
     let current = true;
     fetch('/api/pl/session', { credentials: 'include', cache: 'no-store' })
-      .then(async (response) => response.ok ? response.json() as Promise<{ returnPath?: unknown }> : null)
+      .then(async (response) => response.ok ? response.json() as Promise<{ returnUrl?: unknown }> : null)
       .then((body) => {
-        if (!current || typeof body?.returnPath !== 'string') return;
-        const plOrigin = process.env.NEXT_PUBLIC_PL_APP_BASE_URL?.trim().replace(/\/$/, '');
-        if (plOrigin) setReturnUrl(`${plOrigin}${body.returnPath}`);
+        if (!current || typeof body?.returnUrl !== 'string') return;
+        setReturnUrl(body.returnUrl);
       })
       .catch(() => undefined);
     return () => { current = false; };
