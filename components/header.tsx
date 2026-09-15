@@ -49,7 +49,7 @@ export function Header({
 
   return (
     <>
-      <header className="h-20 px-8 flex items-center justify-between z-10 bg-transparent gap-4">
+      <header className="pl-classroom-header h-20 px-8 flex items-center justify-between z-10 bg-transparent gap-4">
         <div className="flex items-center gap-3 min-w-0 flex-1">
           {hideBackControl
             ? null
@@ -74,7 +74,10 @@ export function Header({
               CommandBar title during the cross-fade. */}
           {mode !== 'edit' && (
             <div className="flex flex-col min-w-0">
-              <span className="text-[10px] uppercase tracking-widest font-bold text-gray-400 dark:text-gray-500 mb-0.5">
+              <span
+                data-pl-classroom-label
+                className="text-[10px] uppercase tracking-widest font-bold text-gray-400 dark:text-gray-500 mb-0.5"
+              >
                 {t('stage.currentScene')}
               </span>
               <h1

@@ -111,7 +111,8 @@ export function SceneSidebar({
         width: displayWidth,
         transition: isDraggingRef.current ? 'none' : 'width 0.3s ease',
       }}
-      className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-r border-gray-100 dark:border-gray-800 shadow-[2px_0_24px_rgba(0,0,0,0.02)] flex flex-col shrink-0 z-20 relative overflow-visible"
+      data-pl-classroom-sidebar
+      className="pl-classroom-sidebar bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-r border-gray-100 dark:border-gray-800 shadow-[2px_0_24px_rgba(0,0,0,0.02)] flex flex-col shrink-0 z-20 relative overflow-visible"
     >
       {/* Drag handle */}
       {!collapsed && (
@@ -131,7 +132,12 @@ export function SceneSidebar({
             className="flex items-center gap-2 cursor-pointer rounded-lg px-1.5 -mx-1.5 py-1 -my-1 hover:bg-gray-100/80 dark:hover:bg-gray-800/60 active:scale-[0.97] transition-all duration-150"
             title={t('generation.backToHome')}
           >
-            <img src="/logo-horizontal.png" alt="OpenMAIC" className="h-6" />
+            <span className="pl-classroom-wordmark" data-testid="pl-classroom-wordmark">
+              <span className="pl-classroom-wordmark-mark" aria-hidden="true">
+                PL
+              </span>
+              <span>Classroom</span>
+            </span>
           </button>
           <button
             onClick={() => onCollapseChange(true)}

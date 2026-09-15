@@ -43,6 +43,16 @@ export default function ClassroomDetailPage() {
   const params = useParams();
   const classroomId = params?.id as string;
 
+  useEffect(() => {
+    const previousTitle = document.title;
+    document.title = 'PL Classroom';
+    document.body.dataset.plClassroom = 'true';
+    return () => {
+      document.title = previousTitle;
+      delete document.body.dataset.plClassroom;
+    };
+  }, []);
+
   const { loadFromStorage } = useStageStore();
 
   const [loading, setLoading] = useState(true);
@@ -285,15 +295,18 @@ export default function ClassroomDetailPage() {
   return (
     <ThemeProvider>
       <MediaStageProvider value={classroomId}>
-        <div className="h-screen flex flex-col overflow-hidden">
+        <div
+          data-pl-classroom-stage
+          className="h-screen min-h-0 min-w-0 flex flex-col overflow-hidden"
+        >
           {loading ? (
-            <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+            <div className="pl-classroom-loading flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
               <div className="text-center text-muted-foreground">
                 <p>Loading classroom...</p>
               </div>
             </div>
           ) : error ? (
-            <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+            <div className="pl-classroom-empty flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
               <div className="text-center">
                 <p className="text-destructive mb-4">Error: {error}</p>
                 <button

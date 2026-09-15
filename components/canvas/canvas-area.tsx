@@ -97,7 +97,7 @@ export function CanvasArea({
   );
 
   return (
-    <div className="w-full h-full flex flex-col bg-gray-50 dark:bg-gray-900 group/canvas">
+    <div className="pl-classroom-canvas w-full h-full flex min-h-0 min-w-0 flex-col bg-gray-50 dark:bg-gray-900 group/canvas">
       {/* Slide area — takes remaining space */}
       <div
         className={cn(
@@ -111,7 +111,7 @@ export function CanvasArea({
           workbench={inWorkbenchPanel}
           interactive={currentScene?.type === 'interactive'}
           className={cn(
-            'bg-white dark:bg-gray-800 shadow-2xl rounded-lg overflow-hidden relative transition-all duration-700',
+            'pl-classroom-slide-frame bg-white dark:bg-gray-800 shadow-2xl rounded-lg overflow-hidden relative transition-all duration-700',
             showControls && !isLiveSession && currentScene?.type === 'slide' && 'cursor-pointer',
             currentScene?.type === 'interactive'
               ? 'shadow-blue-200/50 dark:shadow-blue-900/50 ring-1 ring-blue-900/5 dark:ring-blue-500/10'

@@ -1137,8 +1137,9 @@ export function Roundtable({
 
   return (
     <div
+      data-pl-classroom-roundtable
       className={cn(
-        'h-[192px] w-full flex flex-col relative z-10 transition-all duration-300',
+        'pl-classroom-roundtable h-[192px] w-full flex flex-col relative z-10 transition-all duration-300',
         isPresenting && !controlsVisible
           ? 'border-t border-transparent bg-transparent backdrop-blur-none'
           : 'border-t border-gray-100 dark:border-gray-800 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md',

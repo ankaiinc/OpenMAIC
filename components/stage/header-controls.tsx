@@ -138,7 +138,7 @@ export function HeaderControls({
   // the cluster pixel-stable; both hosts pad to `px-8`, so the right edge
   // anchors identically too.
   return (
-    <div className="flex items-center gap-4">
+    <div className="pl-classroom-controls flex items-center gap-4">
       <PlReturnLink />
       <div
         className={cn(
