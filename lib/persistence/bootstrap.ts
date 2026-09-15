@@ -23,6 +23,24 @@ import { getLearnerKey } from '@/lib/runtime/learner-key';
 let deviceKv: BrowserKVStore | undefined;
 let learnerKeyPromise: Promise<string> | undefined;
 
+export async function resolvePlPersistenceLearnerKey(): Promise<string | null> {
+  try {
+    const response = await fetch('/api/pl/session', {
+      credentials: 'include',
+      cache: 'no-store',
+    });
+    if (response.ok) {
+      const body = await response.json() as { learnerKey?: unknown };
+      if (typeof body.learnerKey === 'string' && /^pl:[a-f0-9]{64}$/.test(body.learnerKey)) {
+        return body.learnerKey;
+      }
+    }
+  } catch {
+    // Ordinary standalone OpenMAIC use keeps its existing device identity.
+  }
+  return null;
+}
+
 export function isBrowserPersistenceEnabled(): boolean {
   return typeof window !== 'undefined' && process.env.NEXT_PUBLIC_PERSISTENCE === '1';
 }
@@ -31,12 +49,12 @@ export function getPersistenceLearnerKey(): Promise<string> {
   if (!isBrowserPersistenceEnabled()) {
     return Promise.reject(new Error('Browser persistence is not enabled'));
   }
-  return (learnerKeyPromise ??= getLearnerKey().catch(
-    (error) => {
+  return (learnerKeyPromise ??= resolvePlPersistenceLearnerKey()
+    .then((key) => key ?? getLearnerKey((deviceKv ??= new BrowserKVStore())))
+    .catch((error) => {
       learnerKeyPromise = undefined;
       throw error;
-    },
-  ));
+    }));
 }
 
 export async function getPersistenceRequestHeaders(): Promise<Record<string, string>> {
@@ -50,23 +68,7 @@ export async function getPersistenceRequestHeaders(): Promise<Record<string, str
 }
 
 if (isBrowserPersistenceEnabled()) {
-  const learnerKey = async () => {
-    try {
-      const response = await fetch('/api/pl/session', {
-        credentials: 'include',
-        cache: 'no-store',
-      });
-      if (response.ok) {
-        const body = await response.json() as { learnerKey?: unknown };
-        if (typeof body.learnerKey === 'string' && /^pl:[a-f0-9]{64}$/.test(body.learnerKey)) {
-          return body.learnerKey;
-        }
-      }
-    } catch {
-      // Ordinary standalone OpenMAIC use keeps its existing device identity.
-    }
-    return getLearnerKey((deviceKv ??= new BrowserKVStore()));
-  };
+  const learnerKey = getPersistenceLearnerKey;
   const headers = getPersistenceRequestHeaders;
 
   const runtimeOptions = {
