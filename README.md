@@ -399,6 +399,31 @@ valid `ASSET_S3_BUCKET` for object-backed asset bytes and explicit
 `ASSET_COLLECTION_GRACE_MS` and `ASSET_COLLECTION_INTERVAL_MS` values. Back up
 PostgreSQL and enable object-store versioning before promoting a release.
 
+### PL Classroom production topology
+
+The production candidate uses the dedicated Fly app `pl-classroom-prod` from
+[`fly.prod.toml`](fly.prod.toml). It has no Fly volume: PostgreSQL is the
+authoritative store for runtime, documents, metadata, and the asset registry;
+Tigris/S3 stores content-hash asset bytes. Set `DATABASE_URL`,
+`OPENMAIC_HANDOFF_SECRET`, `ASSET_S3_BUCKET`, and the S3-compatible endpoint and
+credentials as Fly secrets. Keep the staging app and database/bucket separate.
+
+Provisioning is an operator step: create the Fly app, attach managed Postgres,
+create a private versioned Tigris bucket, configure bucket CORS for the
+classroom origin, and enable daily database backups/PITR. Run the schema
+initializers against the empty production database before accepting traffic;
+they are additive `CREATE TABLE IF NOT EXISTS` initializers, so rollback must
+always be an older application image against a forward-compatible database,
+never a database downgrade. Restore both the database backup and object bucket
+into an isolated staging target before treating rollback as tested.
+
+Promotion is manual through
+`.github/workflows/deploy-pl-classroom-production.yml`, with the same full SHA
+already proven in staging. The workflow verifies the release SHA and `/api/health`
+after deployment. A production rollback reruns that workflow with the last
+known-good SHA, then repeats the same health, release identity, and classroom
+open journey checks.
+
 `PERSISTENCE_POSTGRES_PASSWORD` initializes the PostgreSQL role only when the
 data directory is empty; changing it later does not rotate an existing
 `openmaic-postgres` volume. For a disposable local database, run

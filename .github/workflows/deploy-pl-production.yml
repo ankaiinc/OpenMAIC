@@ -1,0 +1,65 @@
+name: deploy-pl-classroom-production
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Full candidate SHA to deploy
+        required: true
+        type: string
+
+concurrency:
+  group: deploy-pl-classroom-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: pl-classroom-production
+      url: https://classroom.pragmaticleaders.io
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.expected_sha }}
+      - name: Verify exact candidate
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          set -euo pipefail
+          test "$EXPECTED_SHA" = "$GITHUB_SHA"
+          test "$EXPECTED_SHA" = "$(git rev-parse HEAD)"
+          test "${#EXPECTED_SHA}" -eq 40
+      - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1
+        with:
+          version: 0.4.71
+      - name: Deploy exact production candidate
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          flyctl deploy . \
+            --config fly.prod.toml \
+            --remote-only \
+            --build-arg NEXT_PUBLIC_PERSISTENCE=1 \
+            --env RELEASE_SHA="$GITHUB_SHA" \
+            --wait-timeout 900
+      - name: Verify health and exact release
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          set -euo pipefail
+          for attempt in {1..12}; do
+            health=$(curl -fsS --connect-timeout 10 --max-time 30 https://classroom.pragmaticleaders.io/api/health 2>/dev/null || true)
+            release=$(curl -fsS --connect-timeout 10 --max-time 30 https://classroom.pragmaticleaders.io/api/release 2>/dev/null || true)
+            if [ "$(jq -r '.success // false' <<<"$health")" = "true" ] \
+              && [ "$(jq -r '.releaseSha // empty' <<<"$release")" = "$EXPECTED_SHA" ]; then
+              echo "Classroom production is healthy at the exact candidate"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Classroom production did not become healthy at $EXPECTED_SHA" >&2
+          exit 1
