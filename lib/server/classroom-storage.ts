@@ -221,7 +221,14 @@ export async function reserveClassroom(id: string, stage: Stage): Promise<void> 
     reserved: true,
   };
   if (isPostgresClassroomsEnabled()) {
-    await reserveClassroomPayload(await classroomPool(), placeholder);
+    try {
+      await reserveClassroomPayload(await classroomPool(), placeholder);
+    } catch (error) {
+      if ((error as { code?: string }).code === '23505') {
+        throw new ClassroomAlreadyExistsError(id);
+      }
+      throw error;
+    }
     return;
   }
   await writeJsonFileExclusive(resolveClassroomFilePath(id), placeholder);
