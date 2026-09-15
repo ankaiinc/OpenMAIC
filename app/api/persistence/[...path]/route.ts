@@ -26,6 +26,7 @@ import {
 import { readStageMeta } from '@/lib/persistence/stage-meta';
 import { APP_RUNTIME_PAYLOAD_VALIDATORS } from '@/lib/runtime/payload-validators';
 import { withRequestOwnerId } from '@/lib/server/agent-runtime/with-owner';
+import { readPlClassroomSession } from '@/lib/server/pl-classroom-session';
 
 export const runtime = 'nodejs';
 
@@ -302,6 +303,10 @@ interface PersistenceRequestDeps {
   poolFactory?: PersistencePoolFactory;
 }
 
+export function persistenceAuthConfiguredForRequest(request: Pick<Request, 'headers'>): boolean {
+  return Boolean(process.env.PERSISTENCE_DEV_TOKEN || readPlClassroomSession(request.headers));
+}
+
 export async function handlePersistenceRequest(
   request: Request,
   deps: PersistenceRequestDeps = {},
@@ -310,7 +315,7 @@ export async function handlePersistenceRequest(
   if (!connectionString) {
     return jsonError(404, 'PERSISTENCE_NOT_CONFIGURED', 'server persistence not configured');
   }
-  if (!process.env.PERSISTENCE_DEV_TOKEN) {
+  if (!persistenceAuthConfiguredForRequest(request)) {
     return jsonError(
       503,
       'PERSISTENCE_DEV_TOKEN_MISSING',

@@ -52,6 +52,22 @@ describe('embedded persistence route', () => {
     });
   });
 
+  it('accepts a signed PL classroom session without the development token', async () => {
+    vi.stubEnv('PERSISTENCE_DEV_TOKEN', '');
+    vi.stubEnv('OPENMAIC_HANDOFF_SECRET', 'test-handoff-secret-that-is-long-enough-for-signing');
+    const { createPlClassroomSession, plClassroomCookieHeader } = await import('@/lib/server/pl-classroom-session');
+    const token = createPlClassroomSession({
+      classroomId: 'classroom-1',
+      learnerKey: `pl:${'a'.repeat(64)}`,
+      returnPath: '/library/courses/mine/80a124ae-c3fd-487f-8616-0a897121003d',
+    });
+    const { persistenceAuthConfiguredForRequest } = await import('@/app/api/persistence/[...path]/route');
+
+    expect(persistenceAuthConfiguredForRequest(new Request('http://localhost/api/persistence/documents', {
+      headers: { cookie: plClassroomCookieHeader(token) },
+    }))).toBe(true);
+  });
+
   it('retries initialization on the next request after a failed pool initialization', async () => {
     const ensureSchema = vi
       .fn()
