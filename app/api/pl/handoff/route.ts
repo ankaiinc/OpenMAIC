@@ -16,8 +16,9 @@ type ConsumeResponse = {
 export async function GET(request: NextRequest) {
   const ticket = request.nextUrl.searchParams.get('ticket') ?? '';
   const plOrigin = process.env.PL_APP_BASE_URL?.trim().replace(/\/$/, '');
+  const classroomOrigin = process.env.OPENMAIC_PUBLIC_URL?.trim().replace(/\/$/, '');
   const secret = process.env.OPENMAIC_HANDOFF_SECRET?.trim();
-  if (!plOrigin || !secret || !/^[A-Za-z0-9_-]{40,80}$/.test(ticket)) {
+  if (!plOrigin || !classroomOrigin || !secret || !/^[A-Za-z0-9_-]{40,80}$/.test(ticket)) {
     return new Response('Classroom link is invalid or expired.', { status: 404 });
   }
 
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
     learnerKey: body.learnerKey,
     returnPath: body.returnPath,
   });
-  const redirect = NextResponse.redirect(new URL(`/classroom/${encodeURIComponent(body.classroomId)}`, request.url), 303);
+  const redirect = NextResponse.redirect(new URL(`/classroom/${encodeURIComponent(body.classroomId)}`, classroomOrigin), 303);
   redirect.headers.append('Set-Cookie', plClassroomCookieHeader(session));
   redirect.headers.set('Cache-Control', 'private, no-store');
   return redirect;
