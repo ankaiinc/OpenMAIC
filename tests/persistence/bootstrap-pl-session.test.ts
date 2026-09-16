@@ -25,4 +25,18 @@ describe('PL persistence learner identity', () => {
 
     await expect(resolvePlPersistenceLearnerKey()).resolves.toBeNull();
   });
+
+  it('refreshes the signed PL key for request headers after an anonymous key was cached', async () => {
+    vi.stubEnv('NEXT_PUBLIC_PERSISTENCE', '1');
+    vi.stubGlobal('window', {});
+    const learnerKey = `pl:${'b'.repeat(64)}`;
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ learnerKey }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    })));
+    const { getPersistenceRequestHeaders } = await import('@/lib/persistence/bootstrap');
+    await expect(getPersistenceRequestHeaders()).resolves.toMatchObject({
+      'x-learner-key': learnerKey,
+    });
+  });
 });
