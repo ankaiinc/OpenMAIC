@@ -22,6 +22,7 @@ import { getLearnerKey } from '@/lib/runtime/learner-key';
 
 let deviceKv: BrowserKVStore | undefined;
 let learnerKeyPromise: Promise<string> | undefined;
+let plIntegrationDetected = false;
 
 const PL_SESSION_ATTEMPTS = 3;
 const PL_SESSION_RETRY_DELAY_MS = 75;
@@ -33,6 +34,9 @@ export async function resolvePlPersistenceLearnerKey(): Promise<string | null> {
         credentials: 'include',
         cache: 'no-store',
       });
+      if (response.headers.get('x-openmaic-pl-integrated') === '1') {
+        plIntegrationDetected = true;
+      }
       if (response.ok) {
         const body = await response.json() as { learnerKey?: unknown };
         if (typeof body.learnerKey === 'string' && /^pl:[a-f0-9]{64}$/.test(body.learnerKey)) {
@@ -62,7 +66,7 @@ export function getPersistenceLearnerKey(): Promise<string> {
       if (key) return key;
       // A PL-integrated build must never create a second anonymous partition:
       // the server owns the signed learner identity and rejects mismatches.
-      if (process.env.NEXT_PUBLIC_PL_APP_BASE_URL?.trim()) {
+      if (plIntegrationDetected) {
         throw new Error('Signed PL classroom session unavailable');
       }
       return getLearnerKey((deviceKv ??= new BrowserKVStore()));

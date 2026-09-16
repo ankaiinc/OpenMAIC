@@ -23,5 +23,13 @@ describe('PL classroom session route', () => {
     expect(await response.json()).toMatchObject({
       returnUrl: 'https://staging.pragmaticleaders.io/library/courses/mine/123',
     });
+    expect(response.headers.get('x-openmaic-pl-integrated')).toBe('1');
+  });
+
+  it('signals PL integration even when the handoff cookie is absent', async () => {
+    vi.mocked(readPlClassroomSession).mockReturnValue(null);
+    const response = await GET(new Request('https://classroom.example/api/pl/session') as never);
+    expect(response.status).toBe(404);
+    expect(response.headers.get('x-openmaic-pl-integrated')).toBe('1');
   });
 });
