@@ -20,7 +20,7 @@
  */
 import { BrowserKVStore, type KVStore, type RuntimeStore } from '@openmaic/storage';
 
-import { getLearnerKey } from '@/lib/runtime/learner-key';
+import { getPBLLearnerKey } from './learner-identity';
 import { getRuntimeStore } from '@/lib/runtime/store';
 import { withRuntimeStorageSharedLock } from '@/lib/utils/chat-storage-lock';
 import type { PBLEngagementEvent, PBLProjectV2, PBLRuntimeEvent } from '@/lib/pbl/v2/types';
@@ -251,7 +251,7 @@ async function drainProjectRuntimeWork(
   deadline: PBLDrainDeadline,
 ): Promise<void> {
   const kv = injectedKv ?? getDefaultKv();
-  const learnerKey = injectedLearnerKey ?? (await getLearnerKey(kv));
+  const learnerKey = injectedLearnerKey ?? (await getPBLLearnerKey(kv));
   const store = injectedStore ?? getRuntimeStore();
   const key = watermarkKey(stageId, sceneId, learnerKey);
   const watermark = await readWatermark(kv, key);
@@ -328,7 +328,7 @@ async function waitForActiveDrainWork(key: string): Promise<void> {
 
 async function drainProjectRuntimeSerialized(args: DrainProjectRuntimeArgs): Promise<void> {
   const kv = args.kv ?? getDefaultKv();
-  const learnerKey = args.learnerKey ?? (await getLearnerKey(kv));
+  const learnerKey = args.learnerKey ?? (await getPBLLearnerKey(kv));
   const store = args.store ?? getRuntimeStore();
   const inFlightKey = `${args.stageId}:${args.sceneId}:${learnerKey}`;
   const previous = inFlightPblDrains.get(inFlightKey) ?? Promise.resolve();
@@ -380,7 +380,7 @@ export async function withDrainedProjectRuntime<T>(
 ): Promise<T> {
   const run = async (): Promise<T> => {
     const kv = args.kv ?? getDefaultKv();
-    const learnerKey = args.learnerKey ?? (await getLearnerKey(kv));
+    const learnerKey = args.learnerKey ?? (await getPBLLearnerKey(kv));
     const store = args.store ?? getRuntimeStore();
     const inFlightKey = `${args.stageId}:${args.sceneId}:${learnerKey}`;
     const previous = inFlightPblDrains.get(inFlightKey) ?? Promise.resolve();

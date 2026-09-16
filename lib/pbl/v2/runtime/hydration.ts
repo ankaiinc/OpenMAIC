@@ -2,7 +2,7 @@ import { BrowserKVStore, type KVStore, type RuntimeStore } from '@openmaic/stora
 import type { RuntimeRecord } from '@openmaic/dsl';
 import { isEqual } from 'lodash';
 
-import { getLearnerKey } from '@/lib/runtime/learner-key';
+import { getPBLLearnerKey } from './learner-identity';
 import { getRuntimeStore } from '@/lib/runtime/store';
 import { withRuntimeStorageSharedLockUntilSettled } from '@/lib/utils/chat-storage-lock';
 import type { Scene } from '@/lib/types/stage';
@@ -183,7 +183,7 @@ function hasWriteCutoverSnapshot(records: readonly RuntimeRecord[]): boolean {
 export async function synchronizePBLProjectRuntime(args: HydratePBLProjectArgs): Promise<void> {
   await withRuntimeStorageSharedLockUntilSettled(async () => {
     const kv = args.kv ?? getDefaultKv();
-    const learnerKey = args.learnerKey ?? (await getLearnerKey(kv));
+    const learnerKey = args.learnerKey ?? (await getPBLLearnerKey(kv));
     const store = args.store ?? getRuntimeStore();
     const transactionKey = `${args.stageId}:${args.sceneId}:${learnerKey}`;
 
@@ -236,7 +236,7 @@ export async function hydratePBLProjectFromRuntime(
 ): Promise<HydratePBLProjectResult> {
   return withRuntimeStorageSharedLockUntilSettled(async () => {
     const kv = args.kv ?? getDefaultKv();
-    const learnerKey = args.learnerKey ?? (await getLearnerKey(kv));
+    const learnerKey = args.learnerKey ?? (await getPBLLearnerKey(kv));
     const store = args.store ?? getRuntimeStore();
     const transactionKey = `${args.stageId}:${args.sceneId}:${learnerKey}`;
 
