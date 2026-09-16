@@ -58,7 +58,15 @@ export function getPersistenceLearnerKey(): Promise<string> {
     return Promise.reject(new Error('Browser persistence is not enabled'));
   }
   return (learnerKeyPromise ??= resolvePlPersistenceLearnerKey()
-    .then((key) => key ?? getLearnerKey((deviceKv ??= new BrowserKVStore())))
+    .then((key) => {
+      if (key) return key;
+      // A PL-integrated build must never create a second anonymous partition:
+      // the server owns the signed learner identity and rejects mismatches.
+      if (process.env.NEXT_PUBLIC_PL_APP_BASE_URL?.trim()) {
+        throw new Error('Signed PL classroom session unavailable');
+      }
+      return getLearnerKey((deviceKv ??= new BrowserKVStore()));
+    })
     .catch((error) => {
       learnerKeyPromise = undefined;
       throw error;

@@ -53,4 +53,21 @@ describe('PL persistence learner identity', () => {
       'x-learner-key': learnerKey,
     });
   });
+
+  it('fails closed in PL mode, then retries successfully when the session appears', async () => {
+    vi.resetModules();
+    vi.stubEnv('NEXT_PUBLIC_PERSISTENCE', '1');
+    vi.stubEnv('NEXT_PUBLIC_PL_APP_BASE_URL', 'https://staging.pragmaticleaders.io');
+    vi.stubGlobal('window', {});
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 404 })));
+    const { getPersistenceLearnerKey } = await import('@/lib/persistence/bootstrap');
+    await expect(getPersistenceLearnerKey()).rejects.toThrow('Signed PL classroom session unavailable');
+
+    const learnerKey = `pl:${'d'.repeat(64)}`;
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ learnerKey }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    })));
+    await expect(getPersistenceLearnerKey()).resolves.toBe(learnerKey);
+  });
 });
