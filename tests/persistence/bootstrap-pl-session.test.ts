@@ -26,6 +26,20 @@ describe('PL persistence learner identity', () => {
     await expect(resolvePlPersistenceLearnerKey()).resolves.toBeNull();
   });
 
+  it('retries a transient handoff miss before choosing anonymous identity', async () => {
+    const learnerKey = `pl:${'c'.repeat(64)}`;
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(new Response('{}', { status: 404 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ learnerKey }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }));
+    vi.stubGlobal('fetch', fetch);
+
+    await expect(resolvePlPersistenceLearnerKey()).resolves.toBe(learnerKey);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
   it('refreshes the signed PL key for request headers after an anonymous key was cached', async () => {
     vi.stubEnv('NEXT_PUBLIC_PERSISTENCE', '1');
     vi.stubGlobal('window', {});

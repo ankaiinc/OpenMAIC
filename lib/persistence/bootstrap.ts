@@ -23,20 +23,28 @@ import { getLearnerKey } from '@/lib/runtime/learner-key';
 let deviceKv: BrowserKVStore | undefined;
 let learnerKeyPromise: Promise<string> | undefined;
 
+const PL_SESSION_ATTEMPTS = 3;
+const PL_SESSION_RETRY_DELAY_MS = 75;
+
 export async function resolvePlPersistenceLearnerKey(): Promise<string | null> {
-  try {
-    const response = await fetch('/api/pl/session', {
-      credentials: 'include',
-      cache: 'no-store',
-    });
-    if (response.ok) {
-      const body = await response.json() as { learnerKey?: unknown };
-      if (typeof body.learnerKey === 'string' && /^pl:[a-f0-9]{64}$/.test(body.learnerKey)) {
-        return body.learnerKey;
+  for (let attempt = 0; attempt < PL_SESSION_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch('/api/pl/session', {
+        credentials: 'include',
+        cache: 'no-store',
+      });
+      if (response.ok) {
+        const body = await response.json() as { learnerKey?: unknown };
+        if (typeof body.learnerKey === 'string' && /^pl:[a-f0-9]{64}$/.test(body.learnerKey)) {
+          return body.learnerKey;
+        }
       }
+    } catch {
+      // Ordinary standalone OpenMAIC use keeps its existing device identity.
     }
-  } catch {
-    // Ordinary standalone OpenMAIC use keeps its existing device identity.
+    if (attempt + 1 < PL_SESSION_ATTEMPTS) {
+      await new Promise((resolve) => setTimeout(resolve, PL_SESSION_RETRY_DELAY_MS));
+    }
   }
   return null;
 }
