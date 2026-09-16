@@ -21,7 +21,10 @@ describe('PL persistence learner identity', () => {
   });
 
   it('falls back when no valid PL classroom session exists', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 404 })));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', {
+      status: 404,
+      headers: { 'x-openmaic-pl-integrated': '1' },
+    })));
 
     await expect(resolvePlPersistenceLearnerKey()).resolves.toBeNull();
   });
@@ -46,7 +49,7 @@ describe('PL persistence learner identity', () => {
     const learnerKey = `pl:${'b'.repeat(64)}`;
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ learnerKey }), {
       status: 200,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-openmaic-pl-integrated': '1' },
     })));
     const { getPersistenceRequestHeaders } = await import('@/lib/persistence/bootstrap');
     await expect(getPersistenceRequestHeaders()).resolves.toMatchObject({
@@ -59,14 +62,17 @@ describe('PL persistence learner identity', () => {
     vi.stubEnv('NEXT_PUBLIC_PERSISTENCE', '1');
     vi.stubEnv('NEXT_PUBLIC_PL_APP_BASE_URL', 'https://staging.pragmaticleaders.io');
     vi.stubGlobal('window', {});
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 404 })));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', {
+      status: 404,
+      headers: { 'x-openmaic-pl-integrated': '1' },
+    })));
     const { getPersistenceLearnerKey } = await import('@/lib/persistence/bootstrap');
     await expect(getPersistenceLearnerKey()).rejects.toThrow('Signed PL classroom session unavailable');
 
     const learnerKey = `pl:${'d'.repeat(64)}`;
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ learnerKey }), {
       status: 200,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-openmaic-pl-integrated': '1' },
     })));
     await expect(getPersistenceLearnerKey()).resolves.toBe(learnerKey);
   });
