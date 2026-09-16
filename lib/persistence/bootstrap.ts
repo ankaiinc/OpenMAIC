@@ -59,7 +59,12 @@ export function getPersistenceLearnerKey(): Promise<string> {
 
 export async function getPersistenceRequestHeaders(): Promise<Record<string, string>> {
   if (!isBrowserPersistenceEnabled()) return {};
-  const resolvedLearnerKey = await getPersistenceLearnerKey();
+  // A PL handoff can happen through client navigation after the persistence
+  // module has already memoized the anonymous device key. Re-check the signed
+  // session for each request so runtime writes cannot remain stranded in the
+  // anonymous partition after the learner has entered a classroom.
+  const resolvedLearnerKey =
+    (await resolvePlPersistenceLearnerKey()) ?? (await getPersistenceLearnerKey());
   const token = process.env.NEXT_PUBLIC_PERSISTENCE_TOKEN;
   return {
     'x-learner-key': resolvedLearnerKey,
